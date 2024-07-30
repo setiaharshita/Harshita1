@@ -1,0 +1,68 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, roc_auc_score
+
+# Load the dataset
+try:
+    data = pd.read_csv(r'C:\Users\HP\Downloads\fraudTest.csv\fraudTest.csv', encoding='utf-8')
+    print("Dataset loaded successfully.")
+except FileNotFoundError:
+    print("The file was not found. Please check the file path.")
+    exit()
+except Exception as e:
+    print(f"An error occurred: {e}")
+    exit()
+
+# Print column names to verify 'amt' and other important columns exist
+print("Columns in the dataset:", data.columns)
+
+# Checking for missing values
+print("Missing values in each column:")
+print(data.isnull().sum())
+
+# Separating features and target variable
+X = data.drop(['trans_date_trans_time', 'is_fraud'], axis=1)  # Drop non-informative columns
+y = data['is_fraud']
+
+# Identifying categorical and numerical columns
+categorical_cols = X.select_dtypes(include=['object']).columns
+numerical_cols = X.select_dtypes(include=['number']).columns
+
+# Preprocessing pipeline for numerical data
+numerical_transformer = StandardScaler()
+
+# Preprocessing pipeline for categorical data
+categorical_transformer = OneHotEncoder(handle_unknown='ignore')
+
+# Combining preprocessing steps
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+
+# Defining the models
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000, solver='liblinear'),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()
+}
+
+# Splitting the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+
+# Evaluating models
+for model_name, model in models.items():
+    # Creating and training the model pipeline
+    clf = Pipeline(steps=[('preprocessor', preprocessor), ('model', model)])
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    print(f"\n{model_name}")
+    print(classification_report(y_test, y_pred))
+    print("ROC AUC:", roc_auc_score(y_test, y_pred))
